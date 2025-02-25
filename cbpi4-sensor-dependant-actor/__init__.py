@@ -32,11 +32,6 @@ if mode == None:
             options=["Yes", "No"],
             description="No: Active on high; Yes: Active on low",
         ),
-        Property.Select(
-            label="SamplingTime",
-            options=[2, 5],
-            description="Time in seconds for power base interval (Default:5)",
-        ),
         Property.Sensor(
             label="Sensor",
             description="Select the sensor to monitor",
@@ -70,26 +65,6 @@ if mode == None:
 )
 class Dependant_GPIOActor(CBPiActor):
 
-
-    # Custom property which can be configured by the user
-    @action(
-        "Set Power",
-        parameters=[
-            Property.Number(
-                label="Power", configurable=True, description="Power Setting [0-100]"
-            )
-        ],
-    )
-    async def setpower(self, Power=100, **kwargs):
-        self.power = int(Power)
-        if self.power < 0:
-            self.power = 0
-        if self.power > 100:
-            self.power = 100
-        await self.set_power(self.power)
-
-
-
     def get_GPIO_state(self, state):
         # ON
         if state == 1:
@@ -102,7 +77,6 @@ class Dependant_GPIOActor(CBPiActor):
         self.power = None
         self.gpio = self.props.GPIO
         self.inverted = True if self.props.get("Inverted", "No") == "Yes" else False
-        self.sampleTime = int(self.props.get("SamplingTime", 5))
         self.sensor = self.props.get("Sensor")
         self.sensorLL = self.props.get("Sensor Lower Limit")
         self.sensorUL = self.props.get("Sensor Upper Limit")
@@ -163,19 +137,12 @@ class Dependant_GPIOActor(CBPiActor):
         await self.cbpi.actor.actor_update(self.id, power)
         pass
 
-    def get_sensor_value(self, sensor):
+    def get_sensor_value(sensor):
         # This function should return the current value of the specified sensor
-        sensor_value = float(self.get_sensor_value(self.sensor).get("value"))
+        sensor_value = float(self.cbpi.sensor.get("value"))
         return sensor_value
 
 
 def setup(cbpi):
-    """
-    This method is called by the server during startup
-    Here you need to register your plugins at the server
-
-    :param cbpi: the cbpi core
-    :return:
-    """
-
     cbpi.plugin.register("GPIOActor - sensor dependant", Dependant_GPIOActor)
+    pass
