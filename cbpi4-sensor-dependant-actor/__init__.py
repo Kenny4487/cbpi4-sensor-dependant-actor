@@ -111,25 +111,41 @@ class Dependant_GPIOActor(CBPiActor):
     async def run(self):
         while self.running == True:
             sensor_value = self.get_sensor_value(self.sensor)
-            if self.state == True:
-                if self.sensorLL is not None and sensor_value < self.sensorLL:
+            
+            if self.behaviourOnLL == "switch off":
+                if sensor_value < self.sensorLL:
                     self.switch_off_timer += 1
                     if self.sensorLLTime is None or self.sensorLLTime < 0 or self.switch_off_timer >= self.sensorLLTime:
-                        if self.behaviourOnLL == "switch off":
-                            await self.off()
-                        else:
-                            await self.on()
+                        await self.off()
                         self.switch_off_timer = 0
                 else:
                     self.switch_off_timer = 0
-            else:
-                if self.sensorUL is not None and sensor_value > self.sensorUL:
+
+                if sensor_value > self.sensorUL:
                     self.switch_on_timer += 1
                     if self.sensorULTime is None or self.sensorULTime < 0 or self.switch_on_timer >= self.sensorULTime:
                         await self.on()
                         self.switch_on_timer = 0
                 else:
                     self.switch_on_timer = 0
+
+            elif self.behaviourOnLL == "switch on":
+                if sensor_value < self.sensorLL:
+                    self.switch_on_timer += 1
+                    if self.sensorLLTime is None or self.sensorLLTime < 0 or self.switch_on_timer >= self.sensorLLTime:
+                        await self.on()
+                        self.switch_on_timer = 0
+                else:
+                    self.switch_on_timer = 0
+
+                if sensor_value > self.sensorUL:
+                    self.switch_off_timer += 1
+                    if self.sensorULTime is None or self.sensorULTime < 0 or self.switch_off_timer >= self.sensorULTime:
+                        await self.off()
+                        self.switch_off_timer = 0
+                else:
+                    self.switch_off_timer = 0
+
             await asyncio.sleep(1)
 
     async def set_power(self, power):
