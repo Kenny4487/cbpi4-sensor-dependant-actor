@@ -57,13 +57,25 @@ if mode == None:
             description="Time in seconds the sensor value must stay above the upper limit",
         ),
         Property.Select(
-            label="Behaviour on lower limit",
+            label="Behaviour on Lower Limit",
             options=["switch off", "switch on"],
             description="switch off: actor will be switched off once lower limit is met and switched on once upper limit is met, switch on: reversed behaviour",
+        ),
+        Property.Select(
+            label="Mode on startup",
+            options=["manual", "automatic"],
+            description="manual: actor will not start automatically, automatic: actor will start automatically based on sensor values",
         ),
     ]
 )
 class Dependant_GPIOActor(CBPiActor):
+
+    @action("Select Mode", parameters=[Property.Select(label="autoMode", options=["manual", "automatic"], description="turn auto mode on or off")])
+    async def selectMode(self, autoMode, **kwargs):        
+        if autoMode is not None:
+            self.autoMode = autoMode
+        else:
+             logger.info("####################### setting autoMode failed!  ########################### ")
 
     def get_GPIO_state(self, state):
         # ON
@@ -72,6 +84,7 @@ class Dependant_GPIOActor(CBPiActor):
         # OFF
         if state == 0:
             return 0 if self.inverted == False else 1
+                
 
     async def on_start(self):
         self.power = None
@@ -80,25 +93,24 @@ class Dependant_GPIOActor(CBPiActor):
         self.sensor = self.props.get("Sensor")
         self.sensorLL = self.props.get("Sensor Lower Limit")
         self.sensorUL = self.props.get("Sensor Upper Limit")
-        self.sensorLLTime = self.props.get("Sensor Lower Limit Time")
-        self.sensorULTime = self.props.get("Sensor Upper Limit Time")
+        self.LLTime = self.props.get("Sensor Lower Limit Time")
+        self.ULTime = self.props.get("Sensor Upper Limit Time")
         self.behaviourOnLL = self.props.get("Behaviour on Lower Limit")
+        self.autoMode = self.props.get("Mode on startup", "manual")
         GPIO.setup(self.gpio, GPIO.OUT)
         GPIO.output(self.gpio, self.get_GPIO_state(0))
         self.state = False
-        self.switch_on_timer = 0
-        self.switch_off_timer = 0
 
     async def on(self, power=None):
         if power is not None:
             self.power = power
         else:
             self.power = 100
-        #        await self.set_power(self.power)
+        await self.set_power(self.power)    
 
-        logger.info("ACTOR %s ON - GPIO %s " % (self.id, self.gpio))
         GPIO.output(self.gpio, self.get_GPIO_state(1))
-        self.state = True
+        self.state = True   
+
 
     async def off(self):
         logger.info("ACTOR %s OFF - GPIO %s " % (self.id, self.gpio))
@@ -109,42 +121,68 @@ class Dependant_GPIOActor(CBPiActor):
         return self.state
 
     async def run(self):
-        while self.running == True:
-            sensor_value = self.get_sensor_value(self.sensor)
-            
-            if self.behaviourOnLL == "switch off":
-                if sensor_value < self.sensorLL:
-                    self.switch_off_timer += 1
-                    if self.sensorLLTime is None or self.sensorLLTime < 0 or self.switch_off_timer >= self.sensorLLTime:
-                        await self.off()
-                        self.switch_off_timer = 0
-                else:
-                    self.switch_off_timer = 0
+        below_LL_start_time = None
+        above_UL_start_time = None
 
-                if sensor_value > self.sensorUL:
-                    self.switch_on_timer += 1
-                    if self.sensorULTime is None or self.sensorULTime < 0 or self.switch_on_timer >= self.sensorULTime:
-                        await self.on()
-                        self.switch_on_timer = 0
-                else:
-                    self.switch_on_timer = 0
+        while self.running:
+            logger.info("####################### automode:  ########################### ")
+            logger.info(self.autoMode)
 
-            elif self.behaviourOnLL == "switch on":
-                if sensor_value < self.sensorLL:
-                    self.switch_on_timer += 1
-                    if self.sensorLLTime is None or self.sensorLLTime < 0 or self.switch_on_timer >= self.sensorLLTime:
-                        await self.on()
-                        self.switch_on_timer = 0
-                else:
-                    self.switch_on_timer = 0
+            if self.autoMode == "automatic":
+                sensor = self.props.get("Sensor")
 
-                if sensor_value > self.sensorUL:
-                    self.switch_off_timer += 1
-                    if self.sensorULTime is None or self.sensorULTime < 0 or self.switch_off_timer >= self.sensorULTime:
-                        await self.off()
-                        self.switch_off_timer = 0
+                try:
+                    if sensor is not None and sensor != "":
+                        sensor_value = float(self.cbpi.sensor.get_sensor_value(sensor).get('value'))
+                    else:
+                        sensor_value = None
+                except:
+                    sensor_value = None
+
+                logger.info("####################### sensor value %f ########################### %r" % (sensor_value, self.state))
+                logger.info("####################### behaviour: %s ###########################" % (self.behaviourOnLL))  # debug
+
+                current_time = asyncio.get_event_loop().time()
+
+                if sensor_value is not None:
+                    if self.sensorLL is not None and sensor_value < float(self.sensorLL):
+                        if below_LL_start_time is None:
+                            below_LL_start_time = current_time
+                        if self.LLTime is not None and float(self.LLTime) >= 0:
+                            if current_time - below_LL_start_time >= float(self.LLTime):
+                                if self.behaviourOnLL == "switch off" and self.state:
+                                    await self.off()
+                                elif self.behaviourOnLL == "switch on" and not self.state:
+                                    await self.on()
+                        else:
+                            if self.behaviourOnLL == "switch off" and self.state:
+                                await self.off()
+                            elif self.behaviourOnLL == "switch on" and not self.state:
+                                await self.on()
+                    else:
+                        below_LL_start_time = None
+
+                    if self.sensorUL is not None and sensor_value > float(self.sensorUL):
+                        if above_UL_start_time is None:
+                            above_UL_start_time = current_time
+                        if self.ULTime is not None and float(self.ULTime) >= 0:
+                            if current_time - above_UL_start_time >= float(self.ULTime):
+                                if self.behaviourOnLL == "switch off" and not self.state:
+                                    await self.on()
+                                elif self.behaviourOnLL == "switch on" and self.state:
+                                    await self.off()
+                        else:
+                            if self.behaviourOnLL == "switch off" and not self.state:
+                                await self.on()
+                            elif self.behaviourOnLL == "switch on" and self.state:
+                                await self.off()
+                    else:
+                        above_UL_start_time = None
                 else:
-                    self.switch_off_timer = 0
+                    below_LL_start_time = None
+                    above_UL_start_time = None
+            elif self.autoMode == "manual":
+                pass
 
             await asyncio.sleep(1)
 
@@ -153,12 +191,8 @@ class Dependant_GPIOActor(CBPiActor):
         await self.cbpi.actor.actor_update(self.id, power)
         pass
 
-    def get_sensor_value(sensor):
-        # This function should return the current value of the specified sensor
-        sensor_value = float(self.cbpi.sensor.get("value"))
-        return sensor_value
 
-
+        
 def setup(cbpi):
     cbpi.plugin.register("GPIOActor - sensor dependant", Dependant_GPIOActor)
     pass
