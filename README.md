@@ -26,25 +26,25 @@ use `pipx runpip cbpi4 install https://github.com/Kenny4487/cbpi4-sensor-dependa
   - optional: if not specified, limit will be ignored for automatic switching
 - Sensor Lower Limit Time
   - time in seconds
-  - the sensor value must stay below the Lower Limit for the specified time for triggering action
-  - optional: if not specified, setting will be ignored and actor will switch as soon as limit is met
+  - the sensor value must stay below `Sensor Lower Limit` for at least `Sensor Lower Limit Time` to trigger switching action
+  - optional: if not specified, parameter will be ignored and actor will switch as soon the sensor value drops below `Sensor Lower Limit`
 - Sensor Upper Limit Time
   - time in seconds
-  - the sensor value must stay above the Upper Limit for the specified time for triggering action
-  - optional: if not specified, setting will be ignored and actor will switch as soon as limit is met
+  - the sensor value must stay below `Sensor Upper Limit` for at least `Sensor Upper Limit Time` to trigger switching action
+  - optional: if not specified, parameter will be ignored and actor will switch as soon the sensor value rises above `Sensor Upper Limit`
 - Behaviour on lower limit:
   - switch off:
-    - actor will be switched off when lower limit is met
-    - switched on if upper limit is met
+    - actor will be switched off when lower limit is crossed
+    - switched on when upper limit is crossed
   - switch on:
-    - actor will be switched on when lower limit is met
-    - switched off if upper limit is met
+    - actor will be switched on when lower limit is crossed
+    - switched off if upper limit is crossed
 - Mode on startup:
   - the actor has two modes:
     - manual:
-      - no automatic switching, sensor value is ignored.
       - actor behaves exactly like basic GPIOActor
+      - no automatic switching, sensor value is ignored    
     - automatic:
-      - actor is switched based on specified sensor limits
-  - this parameter defines which mode is used after initialization of the actor
+      - actor is switched based on specified sensor limits and times
+  - this parameter defines which mode is used after startup of the actor
   - the mode can be changed in the UI with actor action
