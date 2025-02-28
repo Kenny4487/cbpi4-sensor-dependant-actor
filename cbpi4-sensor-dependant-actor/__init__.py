@@ -125,8 +125,8 @@ class Dependant_GPIOActor(CBPiActor):
         above_UL_start_time = None
 
         while self.running:
-            logger.info("####################### automode:  ########################### ")
-            logger.info(self.autoMode)
+            #logger.info("####################### automode:  ########################### ")
+            #logger.info(self.autoMode)
 
             if self.autoMode == "automatic":
                 sensor = self.props.get("Sensor")
@@ -139,8 +139,8 @@ class Dependant_GPIOActor(CBPiActor):
                 except:
                     sensor_value = None
 
-                logger.info("####################### sensor value %f ########################### %r" % (sensor_value, self.state))
-                logger.info("####################### behaviour: %s ###########################" % (self.behaviourOnLL))  # debug
+                #logger.info("####################### sensor value %f ########################### %r" % (sensor_value, self.state))
+                #logger.info("####################### behaviour: %s ###########################" % (self.behaviourOnLL))  # debug
 
                 current_time = asyncio.get_event_loop().time()
 
