@@ -26,11 +26,11 @@ use `pipx runpip cbpi4 install https://github.com/Kenny4487/cbpi4-sensor-dependa
   - optional: if not specified, limit will be ignored for automatic switching
 - Sensor Lower Limit Time
   - time in seconds
-  - the sensor value must stay below the Lower Limit for the specified amount for triggering action
+  - the sensor value must stay below the Lower Limit for the specified time for triggering action
   - optional: if not specified, setting will be ignored and actor will switch as soon as limit is met
 - Sensor Upper Limit Time
   - time in seconds
-  - the sensor value must stay above the Upper Limit for the specified amount for triggering action
+  - the sensor value must stay above the Upper Limit for the specified time for triggering action
   - optional: if not specified, setting will be ignored and actor will switch as soon as limit is met
 - Behaviour on lower limit:
   - switch off:
